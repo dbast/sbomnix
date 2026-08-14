@@ -129,10 +129,19 @@ class VulnScan:
         )
 
     def report(self, args, sbom_csv):
-        """Generate the vulnerability reports: csv file and a table to console"""
+        """Generate the vulnerability file report and console table."""
         self._generate_report(sbom_csv)
         evidence_out = getattr(args, "evidence_out", None)
+        output_format = getattr(args, "format", "csv")
         if self.df_report is None:
+            if output_format == "sarif":
+                vulnxscan_reporting.write_reports(
+                    pd.DataFrame(),
+                    args.out,
+                    output_format=output_format,
+                    evidence_document=self.evidence_document,
+                    sarif_location=getattr(args, "sarif_location", None),
+                )
             if evidence_out is not None:
                 write_evidence_document(self.evidence_document, evidence_out)
             LOG.info("No vulnerabilities found")
@@ -157,6 +166,9 @@ class VulnScan:
             self.df_report,
             args.out,
             df_triaged=self.df_triaged if args.triage else None,
+            output_format=output_format,
+            evidence_document=self.evidence_document,
+            sarif_location=getattr(args, "sarif_location", None),
         )
         if evidence_out is not None:
             write_evidence_document(self.evidence_document, evidence_out)
