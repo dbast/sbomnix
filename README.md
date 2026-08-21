@@ -9,7 +9,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 This repository is home to various command line tools and Python libraries that aim to help with software supply chain challenges:
 - [`sbomnix`](#generate-sbom) is a utility that generates SBOMs given a [Nix](https://nixos.org/) flake reference or store path.
 - [`nixgraph`](./doc/nixgraph.md) helps query and visualize dependency graphs for [Nix](https://nixos.org/) packages.
-- [`vulnxscan`](./doc/vulnxscan.md) is a vulnerability scanner demonstrating the usage of SBOMs in running vulnerability scans.
+- [`vulnxscan`](./doc/vulnxscan.md) is a vulnerability scanner demonstrating the usage of SBOMs in running vulnerability scans; see its [end-to-end data flow](./doc/vulnxscan.md#end-to-end-data-flow).
 - [`repology_cli`](./doc/repology_cli.md) and [`repology_cve`](./doc/repology_cli.md#repology-cve-search) are command line clients to [repology.org](https://repology.org/).
 - [`nix_outdated`](./doc/nix_outdated.md) is a utility that finds outdated nix dependencies for given out path, listing the outdated packages in priority order based on how many other packages depend on the given outdated package.
 - [`provenance`](./doc/provenance.md) is a command line tool to generate SLSA v1.0 compliant [provenance](https://slsa.dev/spec/v1.0/provenance) attestation files in json format for any nix flake or derivation.

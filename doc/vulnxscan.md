@@ -12,6 +12,7 @@ Table of Contents
 =================
 * [Getting Started](#getting-started)
 * [Example Target](#example-target)
+* [End-to-End Data Flow](#end-to-end-data-flow)
 * [Supported Scanners](#supported-scanners)
    * [Nix and OSV Vulnerability Database](#nix-and-osv-vulnerability-database)
    * [Nix and Grype](#nix-and-grype)
@@ -39,6 +40,75 @@ $ nix run .#vulnxscan -- --help
 
 ## Example Target
 In the below examples, we use `git` as an example target for `vulnxscan`, referred to by flakeref `github:NixOS/nixpkgs/nixos-unstable#git`.
+
+## End-to-End Data Flow
+
+`vulnxscan` combines three independent scanner paths rather than passing data
+through the scanners in sequence. The shared SBOM and normalized pandas frames
+are where those paths meet.
+
+```mermaid
+flowchart TB
+    subgraph upstream["Public vulnerability and package data"]
+        nvd["NIST NVD<br/>CVEs and CPE dictionary"]
+        osvdb["OSV.dev database and API"]
+        distro["Distribution advisories<br/>Alpine, Debian, Ubuntu, Red Hat, ..."]
+        ghsa["GitHub Security Advisories"]
+        auxiliary["CISA KEV and FIRST EPSS"]
+        nixpkgs["Nixpkgs package metadata"]
+    end
+
+    subgraph published["GitHub-hosted aggregation pipelines"]
+        nvdmirror["fkie-cad/nvd-json-data-feeds"]
+        cpedict["tiiuae/cpedict<br/>data/cpes.csv"]
+        vunnel["anchore/vunnel<br/>normalized provider data"]
+        grypedb["anchore/grype-db<br/>published vulnerability DB"]
+    end
+
+    nvd --> nvdmirror --> cpedict
+    nvd --> cpedict
+    nvd --> vunnel
+    distro --> vunnel
+    ghsa --> vunnel
+    auxiliary --> vunnel
+    vunnel --> grypedb
+
+    target["Nix flake or store path"] --> sbomnix["sbomnix"]
+    nixpkgs -->|metadata and exact CPEs| sbomnix
+    cpedict -->|fallback CPE lookup| sbomnix
+    sbomnix --> cdx["CycloneDX SBOM"]
+    sbomnix --> sbomcsv["SBOM CSV<br/>component and patch metadata"]
+
+    cdx --> grype["Grype scan"]
+    grypedb --> grype
+    cdx --> osvclient["vulnxscan OSV client"]
+    osvdb --> osvclient
+    target --> vulnix["Vulnix scan"]
+    nvd -->|local NVD cache| vulnix
+
+    grype --> frames["Normalized pandas DataFrames"]
+    osvclient --> frames
+    vulnix --> frames
+    frames --> matching["Cross-scanner aggregation<br/>and component/patch matching"]
+    sbomcsv --> matching
+
+    dismiss["dismiss.csv<br/>manual-analysis / --whitelist rules"] --> filtering["Whitelist annotation and suppression"]
+    matching --> filtering
+    matching --> evidence["evidence.json<br/>optional audit trail"]
+    filtering -->|all findings plus annotations| csv["vulns.csv"]
+    filtering -->|active findings only| sarif["vulns.sarif"]
+
+    repology["Repology API"] -. optional .-> triage["Version and fix triage"]
+    nixprs["GitHub Nixpkgs PR search"] -. optional .-> triage
+    filtering -.-> triage
+    triage -.-> triagecsv["vulns.triage.csv"]
+    triage -. enriches .-> sarif
+```
+
+The external stages are documented by [cpedict](https://github.com/tiiuae/cpedict),
+[Anchore's Grype data sources](https://oss.anchore.com/docs/reference/grype/data-sources/)
+and [Grype DB architecture](https://oss.anchore.com/docs/architecture/grype-db/),
+[OSV](https://osv.dev/), and [Vulnix](https://github.com/nix-community/vulnix).
 
 ## Supported Scanners
 ### Nix and OSV Vulnerability Database
